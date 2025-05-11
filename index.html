@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ラナちゃん育成ゲーム</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Mochiy Pop One', sans-serif;
+            background-color: #fdf2f8; /* Tailwind bg-pink-50 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #502814; /* Dark brown text */
+        }
+        #gameContainer {
+            background-color: #fff; /* Tailwind bg-white */
+            border-radius: 20px; /* Tailwind rounded-xl */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            padding: 25px; /* Tailwind p-6 */
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        .game-title {
+            font-size: 2.2rem; /* Tailwind text-3xl or text-4xl */
+            color: #c026d3; /* Tailwind text-fuchsia-600 */
+            margin-bottom: 1.5rem; /* Tailwind mb-6 */
+        }
+        #pomeranianDisplay {
+            width: 200px;
+            height: 200px;
+            margin: 1rem auto; /* Tailwind my-4 */
+            background-color: #fce7f3; /* Tailwind bg-pink-100 */
+            border: 3px dashed #fbcfe8; /* Tailwind border-pink-200 */
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Ensure SVG fits */
+        }
+        .status-bars {
+            margin: 1.5rem 0; /* Tailwind my-6 */
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem; /* Tailwind space-y-3 equivalent */
+        }
+        .status-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* Tailwind space-x-2 equivalent */
+        }
+        .status-bar-label {
+            font-size: 1rem; /* Tailwind text-base */
+            width: 80px; /* Fixed width for labels */
+            text-align: right;
+            color: #86198f; /* Tailwind text-fuchsia-700 */
+        }
+        .status-bar {
+            flex-grow: 1;
+            height: 25px; /* Tailwind h-6 */
+            background-color: #e5e7eb; /* Tailwind bg-gray-200 */
+            border-radius: 9999px; /* Tailwind rounded-full */
+            overflow: hidden;
+            border: 1px solid #d1d5db; /* Tailwind border-gray-300 */
+        }
+        .status-bar-fill {
+            height: 100%;
+            width: 50%; /* Default fill */
+            border-radius: 9999px; /* Tailwind rounded-full */
+            transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
+        }
+        .hunger-fill { background-color: #f59e0b; } /* Tailwind bg-amber-500 */
+        .happiness-fill { background-color: #ec4899; } /* Tailwind bg-pink-500 */
+        .energy-fill { background-color: #22c55e; } /* Tailwind bg-green-500 */
+
+        .action-buttons {
+            margin-top: 1.5rem; /* Tailwind mt-6 */
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem; /* Tailwind gap-3 */
+        }
+        .action-button {
+            background-color: #a21caf; /* Tailwind bg-fuchsia-600 */
+            color: white;
+            font-family: 'Mochiy Pop One', sans-serif;
+            font-size: 1rem; /* Tailwind text-base */
+            padding: 0.75rem 1rem; /* Tailwind py-3 px-4 */
+            border: none;
+            border-radius: 10px; /* Tailwind rounded-lg */
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .action-button:hover {
+            background-color: #86198f; /* Tailwind bg-fuchsia-700 */
+        }
+        .action-button:active {
+            background-color: #701a75; /* Tailwind bg-fuchsia-800 */
+            transform: translateY(1px);
+        }
+        .action-button:disabled {
+            background-color: #d8b4fe; /* Tailwind bg-purple-300 */
+            cursor: not-allowed;
+        }
+        #messageArea {
+            margin-top: 1rem; /* Tailwind mt-4 */
+            min-height: 40px; /* Reserve space */
+            font-size: 0.9rem; /* Tailwind text-sm */
+            color: #701a75; /* Tailwind text-fuchsia-800 */
+            font-weight: bold;
+        }
+
+        /* Pomeranian SVG Style */
+        .pomeranian-svg {
+            width: 150px; /* Adjust size as needed */
+            height: 150px;
+            transform-origin: center bottom;
+        }
+        .pomeranian-body { fill: #4A3B31; } /* Dark brown/black for the main body */
+        .pomeranian-chest { fill: #FFF8DC; } /* Creamy white for chest/fluff */
+        .pomeranian-face-details { fill: #D2B48C; } /* Tan for muzzle/legs */
+        .pomeranian-eyes, .pomeranian-nose { fill: #000000; }
+        .pomeranian-tongue { fill: #FF69B4; display: none; } /* Pink, initially hidden */
+        .pomeranian-inner-ear { fill: #F4C2C2; } /* Light pink */
+
+        /* Animation classes */
+        .happy-bounce {
+            animation: bounce 0.5s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+        .eating-animation {
+            animation: eating 0.6s ease-in-out;
+        }
+        @keyframes eating {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+        .sleeping-animation {
+            animation: sleeping 2s infinite ease-in-out;
+        }
+        @keyframes sleeping {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(2px) rotate(-2deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1 class="game-title">ラナちゃんのお世話</h1>
+        <div id="pomeranianDisplay">
+            <svg id="pomeranianSVG" class="pomeranian-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path class="pomeranian-body" d="M80 50 Q95 35 85 60 Q75 75 80 50 Z"/>
+                <ellipse class="pomeranian-body" cx="50" cy="70" rx="32" ry="22"/>
+                <rect class="pomeranian-face-details" x="30" y="85" width="15" height="15" rx="5"/>
+                <rect class="pomeranian-face-details" x="55" y="85" width="15" height="15" rx="5"/>
+                <circle class="pomeranian-body" cx="50" cy="45" r="25"/>
+                <path class="pomeranian-chest" d="M30,50 Q50,35 70,50  Q65,75 50,80 Q35,75 30,50 Z"/>
+                <ellipse class="pomeranian-face-details" cx="50" cy="52" rx="12" ry="8"/>
+                <path class="pomeranian-body" d="M30,25 Q38,15 45,28 Z"/>
+                <path class="pomeranian-inner-ear" d="M33,27 Q38,20 42,28 Z"/>
+                <path class="pomeranian-body" d="M70,25 Q62,15 55,28 Z"/>
+                <path class="pomeranian-inner-ear" d="M67,27 Q62,20 58,28 Z"/>
+                <circle class="pomeranian-eyes" cx="42" cy="42" r="3.5"/>
+                <circle class="pomeranian-eyes" cx="58" cy="42" r="3.5"/>
+                <ellipse class="pomeranian-nose" cx="50" cy="50" rx="4" ry="3"/>
+                <path id="pomeranianTongue" class="pomeranian-tongue" d="M48,55 Q50,60 52,55 Z"/>
+            </svg>
+        </div>
+
+        <div id="messageArea">ラナちゃんにごあいさつ！</div>
+
+        <div class="status-bars">
+            <div class="status-bar-container">
+                <span class="status-bar-label">おなか:</span>
+                <div class="status-bar"><div id="hungerBar" class="status-bar-fill hunger-fill"></div></div>
+            </div>
+            <div class="status-bar-container">
+                <span class="status-bar-label">ごきげん:</span>
+                <div class="status-bar"><div id="happinessBar" class="status-bar-fill happiness-fill"></div></div>
+            </div>
+            <div class="status-bar-container">
+                <span class="status-bar-label">げんき:</span>
+                <div class="status-bar"><div id="energyBar" class="status-bar-fill energy-fill"></div></div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="feedButton" class="action-button">ごはん 🍖</button>
+            <button id="playButton" class="action-button">あそぶ 🎾</button>
+            <button id="restButton" class="action-button">ねる 💤</button>
+        </div>
+    </div>
+
+    <script>
+        // Pomeranian state
+        const pomeranian = {
+            hunger: 70,    // 0-100 (0 is very hungry)
+            happiness: 60, // 0-100 (100 is very happy)
+            energy: 50,    // 0-100 (0 is very tired)
+            isSleeping: false,
+            maxStat: 100,
+            minStat: 0,
+            baseDecayRate: 1, // How much stats decrease per interval
+        };
+
+        // DOM Elements
+        const hungerBar = document.getElementById('hungerBar');
+        const happinessBar = document.getElementById('happinessBar');
+        const energyBar = document.getElementById('energyBar');
+        const feedButton = document.getElementById('feedButton');
+        const playButton = document.getElementById('playButton');
+        const restButton = document.getElementById('restButton');
+        const messageArea = document.getElementById('messageArea');
+        const pomeranianSVG = document.getElementById('pomeranianSVG');
+        const pomeranianTongue = document.getElementById('pomeranianTongue');
+
+        // --- Game Logic ---
+
+        function updateStatusBars() {
+            hungerBar.style.width = pomeranian.hunger + '%';
+            happinessBar.style.width = pomeranian.happiness + '%';
+            energyBar.style.width = pomeranian.energy + '%';
+
+            // Change bar color based on value (optional visual cue)
+            hungerBar.style.backgroundColor = pomeranian.hunger < 30 ? '#ef4444' : '#f59e0b'; // red if low, else amber
+            happinessBar.style.backgroundColor = pomeranian.happiness < 30 ? '#a855f7' : '#ec4899'; // purple if low, else pink
+            energyBar.style.backgroundColor = pomeranian.energy < 30 ? '#f97316' : '#22c55e'; // orange if low, else green
+        }
+
+        function showMessage(msg, duration = 3000) {
+            messageArea.textContent = msg;
+            if (duration > 0) {
+                setTimeout(() => {
+                    if (messageArea.textContent === msg) { // Clear only if it's the same message
+                        messageArea.textContent = getDefaultMessage();
+                    }
+                }, duration);
+            }
+        }
+
+        function getDefaultMessage() {
+            if (pomeranian.isSleeping) return "ラナちゃんはすやすや… 😴";
+            if (pomeranian.hunger < 30) return "おなかすいたな～ 🥺";
+            if (pomeranian.happiness < 30) return "なんだかつまらないな… 😔";
+            if (pomeranian.energy < 30) return "ちょっとつかれたかも… 🥱";
+            return "ラナちゃんは元気いっぱい！ 😄";
+        }
+
+        function animatePomeranian(animationClass, duration = 500) {
+            pomeranianSVG.classList.add(animationClass);
+            setTimeout(() => {
+                pomeranianSVG.classList.remove(animationClass);
+            }, duration);
+        }
+
+        function toggleTongue(show) {
+            pomeranianTongue.style.display = show ? 'block' : 'none';
+        }
+
+        // --- Actions ---
+        feedButton.addEventListener('click', () => {
+            if (pomeranian.isSleeping) {
+                showMessage("ぐーぐー… ごはんのゆめ？", 2000);
+                return;
+            }
+            if (pomeranian.hunger >= pomeranian.maxStat) {
+                showMessage("もうおなかいっぱい！", 2000);
+                pomeranian.happiness = Math.max(pomeranian.minStat, pomeranian.happiness - 5); // Overfeeding
+            } else {
+                pomeranian.hunger = Math.min(pomeranian.maxStat, pomeranian.hunger + 25);
+                pomeranian.happiness = Math.min(pomeranian.maxStat, pomeranian.happiness + 5);
+                showMessage("もぐもぐ… おいしい！ 😋", 2000);
+                animatePomeranian('eating-animation', 600);
+            }
+            updateGame();
+        });
+
+        playButton.addEventListener('click', () => {
+            if (pomeranian.isSleeping) {
+                showMessage("むにゃむにゃ… あそんでるゆめ？", 2000);
+                return;
+            }
+            if (pomeranian.energy < 20) {
+                showMessage("つかれてて遊べないや… 😥", 2000);
+            } else {
+                pomeranian.happiness = Math.min(pomeranian.maxStat, pomeranian.happiness + 20);
+                pomeranian.energy = Math.max(pomeranian.minStat, pomeranian.energy - 15);
+                pomeranian.hunger = Math.max(pomeranian.minStat, pomeranian.hunger - 5);
+                showMessage("わーい！たのしいな！ 🥳");
+                animatePomeranian('happy-bounce');
+                toggleTongue(true);
+                setTimeout(() => toggleTongue(false), 1500);
+            }
+            updateGame();
+        });
+
+        restButton.addEventListener('click', () => {
+            if (pomeranian.isSleeping) {
+                pomeranian.isSleeping = false;
+                pomeranianSVG.classList.remove('sleeping-animation');
+                restButton.textContent = "ねる 💤";
+                showMessage("おはよう！よくねたー！ 😊");
+                // Enable other buttons
+                feedButton.disabled = false;
+                playButton.disabled = false;
+            } else {
+                pomeranian.isSleeping = true;
+                pomeranianSVG.classList.add('sleeping-animation');
+                restButton.textContent = "おきる ☀️";
+                showMessage("ラナちゃんはねむっちゃった… 😴");
+                // Disable other buttons while sleeping
+                feedButton.disabled = true;
+                playButton.disabled = true;
+            }
+            updateGame(); // Update displays and default message
+        });
+
+        function applyDecay() {
+            if (pomeranian.isSleeping) {
+                pomeranian.energy = Math.min(pomeranian.maxStat, pomeranian.energy + pomeranian.baseDecayRate * 3); // Energy recovers faster when sleeping
+                pomeranian.hunger = Math.max(pomeranian.minStat, pomeranian.hunger - pomeranian.baseDecayRate * 0.2); // Hunger decreases slower
+            } else {
+                pomeranian.hunger = Math.max(pomeranian.minStat, pomeranian.hunger - pomeranian.baseDecayRate);
+                pomeranian.happiness = Math.max(pomeranian.minStat, pomeranian.happiness - pomeranian.baseDecayRate * 0.7);
+                pomeranian.energy = Math.max(pomeranian.minStat, pomeranian.energy - pomeranian.baseDecayRate * 0.5);
+            }
+
+            // Ensure stats don't go below 0
+            pomeranian.hunger = Math.max(pomeranian.minStat, pomeranian.hunger);
+            pomeranian.happiness = Math.max(pomeranian.minStat, pomeranian.happiness);
+            pomeranian.energy = Math.max(pomeranian.minStat, pomeranian.energy);
+        }
+
+        function updatePomeranianVisuals() {
+            // Change expression based on mood (simple example)
+            if (!pomeranian.isSleeping) {
+                if (pomeranian.happiness < 30 || pomeranian.hunger < 30) {
+                    // Sad/Hungry face - maybe slight rotation or different eye shape if we had more complex SVG
+                    pomeranianSVG.style.filter = "grayscale(30%)";
+                    toggleTongue(false);
+                } else if (pomeranian.happiness > 70) {
+                    pomeranianSVG.style.filter = "none";
+                    // Happy face - tongue out briefly after play
+                } else {
+                    pomeranianSVG.style.filter = "none";
+                    toggleTongue(false);
+                }
+            } else {
+                 pomeranianSVG.style.filter = "none"; // Normal colors when sleeping
+                 toggleTongue(false);
+            }
+        }
+
+
+        function updateGame() {
+            applyDecay();
+            updateStatusBars();
+            updatePomeranianVisuals();
+            // Update default message if no temporary message is shown
+            if (messageArea.textContent.startsWith("ラナちゃんは") || messageArea.textContent.includes("ゆめ") || messageArea.textContent.includes("おはよう") || messageArea.textContent.includes("ねむっちゃった")) {
+                 messageArea.textContent = getDefaultMessage();
+            }
+
+            // Check for game over conditions (optional)
+            // e.g., if hunger or happiness is 0 for too long.
+        }
+
+        // Game Loop
+        function startGame() {
+            updateStatusBars();
+            showMessage(“ラナちゃんのお世話をはじめよう！");
+            setInterval(updateGame, 3000); // Update stats every 3 seconds
+        }
+
+        // Initial call
+        startGame();
+    </script>
+</body>
+</html>
+
